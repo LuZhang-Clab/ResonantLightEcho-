@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <title>Real-time Facial Expression Detection</title>
+</head>
+<body>
+  <div>
+    <section>
+      <video id="myVideo" width="640" height="480" autoplay muted></video>
+      <canvas id="myCanvas"></canvas>
+    </section>
+    <section>
+      <h2>Friends' video</h2>
+
+    </section>
+  </div>
+  <script src="libraries/simplepeer.min.js"></script>
+  <script defer src="libraries/face-api.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
