@@ -8,6 +8,9 @@ let myLocalMediaStream; // Stores the local video stream
 let socket; // WebSocket connection object
 let myFriends = {}; // Stores all connected peers
 let faceCanvas = {}; // Stores the face detection canvas for each peer
+let happinessStates = {}; // Stores happiness states for each peer
+let effectsLayer; // Reference to the effects layer
+let sparkleElements = {}; // Stores sparkle elements for each peer
 
 // Load Face-API.js models
 async function loadModels() {
@@ -155,32 +158,124 @@ function setupConnection(initiator, theirSocketId) {
 
 // Face Detection Function for both local and remote videos
 function startFaceDetection(videoEl, canvasId) {
-  const canvas = document.getElementById(canvasId); // Get the canvas element by id
+  const canvas = document.getElementById(canvasId);
   console.log(canvasId);
 
   const displaySize = { width: videoEl.width, height: videoEl.height };
-  faceapi.matchDimensions(canvas, displaySize); // Match the canvas size to the video
+  faceapi.matchDimensions(canvas, displaySize);
 
-  // Set an interval to perform face detection every 100ms
+  // Initialize effects layer if not already done
+  if (!effectsLayer) {
+    effectsLayer = document.getElementById('effects-layer');
+  }
+
+  // Create fixed sparkle for this peer
+  const peerId = canvasId === 'myCanvas' ? socket.id : canvasId.replace('canvas_', '');
+  createFixedSparkle(peerId);
+
   setInterval(async () => {
     if (videoEl.width === 0 || videoEl.height === 0) {
       console.warn("Skipping face detection: Video not ready.");
       return;
     }
 
-    // Detect faces, landmarks, and expressions
     const detections = await faceapi
       .detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
       .withFaceExpressions();
 
-    const resizedDetections = faceapi.resizeResults(detections, displaySize); // Resize the results to match the video
+    const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
-    // Draw the detection results on the canvas
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before drawing new results
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     faceapi.draw.drawDetections(canvas, resizedDetections);
     faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
     faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+
+    // Check happiness level and update sparkle visibility
+    if (resizedDetections.length > 0) {
+      const happiness = resizedDetections[0].expressions.happy;
+      happinessStates[peerId] = happiness;
+      
+      // Update sparkle animation based on happiness
+      if (sparkleElements[peerId]) {
+        const sparkle = sparkleElements[peerId];
+        if (happiness > 0.9) {
+          sparkle.classList.add('happy');
+        } else {
+          sparkle.classList.remove('happy');
+        }
+      }
+
+      // Check if all peers are happy
+      const allPeersHappy = Object.values(happinessStates).every(h => h > 0.9);
+      if (allPeersHappy) {
+        createFirework();
+      }
+    }
   }, 100);
+}
+
+// Create fixed sparkle for a peer
+function createFixedSparkle(peerId) {
+  const sparkle = document.createElement('div');
+  sparkle.className = 'sparkle';
+  
+  // Calculate fixed position based on peerId
+  const hash = peerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const x = (hash % 80) + 10; // 10% to 90% of screen width
+  const y = ((hash * 7) % 80) + 10; // 10% to 90% of screen height
+  
+  sparkle.style.left = x + '%';
+  sparkle.style.top = y + '%';
+  
+  effectsLayer.appendChild(sparkle);
+  sparkleElements[peerId] = sparkle;
+}
+
+// Create firework effect
+function createFirework() {
+  // Hide all sparkles
+  Object.values(sparkleElements).forEach(sparkle => {
+    sparkle.classList.add('hidden');
+  });
+
+  const colors = ['#ff0', '#f0f', '#0ff', '#f00', '#0f0'];
+  const numParticles = 50;
+  
+  for (let i = 0; i < numParticles; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'firework';
+    
+    // Random color
+    particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    // Random starting position
+    const startX = Math.random() * window.innerWidth;
+    const startY = Math.random() * window.innerHeight;
+    particle.style.left = startX + 'px';
+    particle.style.top = startY + 'px';
+    
+    // Random direction and distance
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * 200 + 100;
+    const tx = Math.cos(angle) * distance;
+    const ty = Math.sin(angle) * distance;
+    
+    particle.style.setProperty('--tx', `${tx}px`);
+    particle.style.setProperty('--ty', `${ty}px`);
+    
+    effectsLayer.appendChild(particle);
+    
+    // Remove particle after animation and show sparkles again
+    setTimeout(() => {
+      particle.remove();
+      if (i === numParticles - 1) { // Only on the last particle
+        // Show all sparkles again
+        Object.values(sparkleElements).forEach(sparkle => {
+          sparkle.classList.remove('hidden');
+        });
+      }
+    }, 1000);
+  }
 }
