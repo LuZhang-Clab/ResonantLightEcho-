@@ -1,0 +1,53 @@
+/* 光点效果样式 */
+.sparkle {
+  position: absolute !important;
+  width: 120px !important;
+  height: 120px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.2) 60%, transparent 100%) !important;
+  opacity: 1 !important;
+  z-index: 3000 !important; /* 确保显示在最上层 */
+  pointer-events: none !important;
+  transition: all 0.8s ease !important;
+  filter: blur(2px) !important;
+  /* 双重动画效果 */
+  animation: sparkle-float 8s ease-in-out infinite, sparkle-pulse 3s ease-in-out infinite !important;
+  /* 增强光芒效果 */
+  box-shadow: 0 0 80px var(--sparkle-color, #ffffff), 0 0 150px var(--sparkle-color, #ffffff) !important;
+}
+
+/* 漂浮动画 */
+@keyframes sparkle-float {
+  0% { transform: translate(0, 0) scale(1.8); }
+  50% { transform: translate(0, -15px) scale(2.2); }
+  100% { transform: translate(0, 0) scale(1.8); }
+}
+
+/* 闪烁动画 */
+@keyframes sparkle-pulse {
+  0% { opacity: 0.7; box-shadow: 0 0 50px var(--sparkle-color), 0 0 100px var(--sparkle-color); }
+  50% { opacity: 1; box-shadow: 0 0 80px var(--sparkle-color), 0 0 160px var(--sparkle-color); }
+  100% { opacity: 0.7; box-shadow: 0 0 50px var(--sparkle-color), 0 0 100px var(--sparkle-color); }
+}
+
+/* 微笑状态效果增强 */
+.sparkle.smiling {
+  width: 180px !important;
+  height: 180px !important;
+  z-index: 3001 !important;
+  filter: blur(1px) !important;
+  animation: sparkle-float-smile 4s ease-in-out infinite, sparkle-pulse-smile 2s ease-in-out infinite !important;
+  box-shadow: 0 0 100px var(--sparkle-color), 0 0 200px var(--sparkle-color), 0 0 300px var(--sparkle-color) !important;
+}
+
+@keyframes sparkle-float-smile {
+  0% { transform: translate(0, 0) scale(2.5); }
+  50% { transform: translate(0, -20px) scale(3.0); }
+  100% { transform: translate(0, 0) scale(2.5); }
+}
+
+@keyframes sparkle-pulse-smile {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+} 

@@ -6,16 +6,16 @@ app.use('/', express.static('public'));
 /* Step 1.3. Get access to the file system*/
 let fs = require('fs');
 
-/* Step 1.4. 修改为 HTTP 服务器 */
+/* Step 1.4. 使用 HTTP 服务器 */
 let http = require('http'); // 使用 http 模块
-let port = process.env.PORT || 3000; // Glitch 使用 PORT 环境变量（必须大写）
+let port = process.env.PORT || 3001; // 修改为端口3001
 
 // 创建 HTTP 服务器
 let server = http.createServer(app);
 
 // 启动服务器
 server.listen(port, () => {
-  console.log('Server listening on port', port);
+  console.log('服务器运行在端口', port);
 });
 
 /*STEP 2. Peers object to store peer ids*/
