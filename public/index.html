@@ -6,9 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
   <title>Real-time Facial Expression Detection</title>
+  <!-- Add favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
+  <!-- 添加优雅字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet">
+  <!-- 添加 tsParticles 库 -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.3.4/tsparticles.bundle.min.js"></script> -->
 </head>
 <body>
-  <div id="effects-layer"></div>
+  <!-- 粒子画布容器 - 放在最前面 -->
+  <div id="tsparticles"></div>
+  
   <div>
     <section>
       <video id="myVideo" width="640" height="480" autoplay muted></video>
@@ -16,9 +26,20 @@
     </section>
     <section>
       <h2>Friends' video</h2>
-
     </section>
+    <div id="effects-layer"></div>
   </div>
+
+  <!-- 诗句文本 -->
+  <div id="poem" class="poem-text">
+    Every smile is a unique frequency<br>
+    When two waves resonate<br>
+    A new cosmos is born.
+  </div>
+
+  <!-- Add audio element for firework sound -->
+ <audio id="fireworkSound" src="https://cdn.glitch.global/bec83eca-c578-4021-acb8-8c201b2379c7/public%2FFireworkSound.mp3?v=1743495218339" preload="auto"></audio>
+
   <script src="libraries/simplepeer.min.js"></script>
   <script defer src="libraries/face-api.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
