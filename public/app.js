@@ -46,6 +46,12 @@ let poemElement = null; // 存储诗句元素引用
 let isFaceDetected = false; // 跟踪是否有人脸被检测到
 let fireworkHasTriggered = false; // 跟踪烟花是否已触发过
 let loneSmileTimeout = null; // 存储单人微笑超时计时器
+let heartBeatAudio = null; // 全局心跳音效audio
+let isOrbiting = false;
+let orbitAnimationId = null;
+let violinCelloAudio = null;
+let orbitSparkleIds = [];
+let orbitBasePositions = [];
 
 // 替换为新的光球颜色系列
 const SPARKLE_COLORS = [
@@ -443,9 +449,15 @@ function startFaceDetection(videoEl, canvasId) {
                 sparkle.classList.add('expired');
                 checkFireworkState();
               }, 10000);
+              // happy状态变化后检查心跳音效
+              checkHeartBeatSound();
             }
           } else {
-            sparkle.classList.remove('happy');
+            if (sparkle.classList.contains('happy')) {
+              sparkle.classList.remove('happy');
+              // happy状态变化后检查心跳音效
+              checkHeartBeatSound();
+            }
             if (sparkleTimers[faceId]) {
               clearTimeout(sparkleTimers[faceId]);
               delete sparkleTimers[faceId];
@@ -457,6 +469,8 @@ function startFaceDetection(videoEl, canvasId) {
 
       // 检查烟花状态
       checkFireworkState();
+      // 检查并触发环绕状态
+      checkAndStartOrbit();
     } else {
       // 没有检测到人脸
       isFaceDetected = false;
@@ -597,19 +611,16 @@ function clearLoneSmileTimeout() {
 // Start continuous fireworks
 function startContinuousFireworks(colors) {
   if (fireworkInterval) return;
-  
-  // 让所有参与烟花的sparkle变为透明
-  if (Array.isArray(colors)) {
-    Object.keys(sparkleElements).forEach(faceId => {
-      const sparkle = sparkleElements[faceId];
-      if (sparkle && colors.includes(sparkle.dataset.originalColor)) {
-        sparkle.style.backgroundColor = 'transparent'; // 变为透明
-        // 隐藏坐标
-        const coords = sparkle.querySelector('.sparkle-coordinates');
-        if (coords) coords.style.opacity = 0;
-      }
-    });
-  }
+  // 让所有已分配颜色的sparkle（.filled）变为透明
+  Object.values(sparkleElements).forEach(sparkle => {
+    if (sparkle && sparkle.classList.contains('filled')) {
+      sparkle.style.setProperty('--sparkle-main', 'rgba(0,0,0,0)');
+      sparkle.style.opacity = '0';
+      // 隐藏坐标
+      const coords = sparkle.querySelector('.sparkle-coordinates');
+      if (coords) coords.style.opacity = 0;
+    }
+  });
   
   // 将诗句变为黑色（完全不可见）
   if (poemElement) {
@@ -647,11 +658,11 @@ function stopFireworks() {
       fireworkSound.currentTime = 0;
     }
     
-    // 恢复所有粒子的原始颜色
+    // 恢复所有粒子的原始颜色和不透明度
     Object.values(sparkleElements).forEach(sparkle => {
       if (!sparkle.classList.contains('hidden') && sparkle.dataset.originalColor) {
-        sparkle.style.backgroundColor = sparkle.dataset.originalColor;
-        
+        sparkle.style.setProperty('--sparkle-main', sparkle.dataset.originalColor);
+        sparkle.style.opacity = '0.97';
         // 恢复坐标显示
         const coordsElement = sparkle.querySelector('.sparkle-coordinates');
         if (coordsElement) {
@@ -886,4 +897,126 @@ function showIntroText() {
   poemElement.innerHTML = `In the depths of the cosmos lies the Starfield of Resonance, a hidden energy field that resonates with smiles. <br>When two sincere stars meet here, they ignite splendid nebular fireworks.<br> Explore it, shall we?`;
   poemElement.classList.add('visible');
   playSpaceAmbient();
+}
+
+function playHeartBeat() {
+  if (!heartBeatAudio) {
+    heartBeatAudio = document.createElement('audio');
+    heartBeatAudio.src = 'HeartBeat.mp3';
+    heartBeatAudio.loop = true;
+    heartBeatAudio.preload = 'auto';
+    document.body.appendChild(heartBeatAudio);
+  }
+  heartBeatAudio.volume = 1.0;
+  heartBeatAudio.play();
+}
+
+function stopHeartBeat() {
+  if (heartBeatAudio) {
+    heartBeatAudio.pause();
+    heartBeatAudio.currentTime = 0;
+  }
+}
+
+// 检查是否有光点在跳动
+function checkHeartBeatSound() {
+  const anyHappy = Object.values(sparkleElements).some(
+    sparkle => sparkle && sparkle.classList.contains('happy')
+  );
+  if (anyHappy) {
+    playHeartBeat();
+  } else {
+    stopHeartBeat();
+  }
+}
+
+function playViolinCello() {
+  if (!violinCelloAudio) {
+    violinCelloAudio = document.createElement('audio');
+    violinCelloAudio.src = 'ViolinCello.mp3';
+    violinCelloAudio.loop = true;
+    violinCelloAudio.preload = 'auto';
+    document.body.appendChild(violinCelloAudio);
+  }
+  violinCelloAudio.volume = 1.0;
+  violinCelloAudio.play();
+}
+
+function stopViolinCello() {
+  if (violinCelloAudio) {
+    violinCelloAudio.pause();
+    violinCelloAudio.currentTime = 0;
+  }
+}
+
+function checkAndStartOrbit() {
+  // 只处理两个可见光点
+  const ids = Object.keys(sparkleElements).filter(id => {
+    const s = sparkleElements[id];
+    return s && !s.classList.contains('hidden');
+  });
+  if (ids.length !== 2) {
+    stopOrbit();
+    return;
+  }
+  const s1 = sparkleElements[ids[0]];
+  const s2 = sparkleElements[ids[1]];
+  const x1 = parseFloat(s1.style.left);
+  const y1 = parseFloat(s1.style.top);
+  const x2 = parseFloat(s2.style.left);
+  const y2 = parseFloat(s2.style.top);
+  const dist = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+  if (dist < 100) {
+    startOrbit(ids, [x1, y1, x2, y2]);
+  } else {
+    stopOrbit();
+  }
+}
+
+function startOrbit(ids, basePositions) {
+  if (isOrbiting) return;
+  isOrbiting = true;
+  orbitSparkleIds = ids;
+  orbitBasePositions = basePositions;
+  playViolinCello();
+  let angle = 0;
+  const radius = 40;
+  function animate() {
+    if (!isOrbiting) return;
+    angle += 0.03;
+    const [x1, y1, x2, y2] = orbitBasePositions;
+    const cx = (x1 + x2) / 2;
+    const cy = (y1 + y2) / 2;
+    const s1 = sparkleElements[orbitSparkleIds[0]];
+    const s2 = sparkleElements[orbitSparkleIds[1]];
+    if (s1 && s2) {
+      s1.style.left = `${cx + radius * Math.cos(angle) - 20}px`;
+      s1.style.top = `${cy + radius * Math.sin(angle) - 20}px`;
+      s2.style.left = `${cx + radius * Math.cos(angle + Math.PI) - 20}px`;
+      s2.style.top = `${cy + radius * Math.sin(angle + Math.PI) - 20}px`;
+    }
+    // 检查两人是否都在笑
+    const happy1 = happinessStates[orbitSparkleIds[0]] > 0.8;
+    const happy2 = happinessStates[orbitSparkleIds[1]] > 0.8;
+    if (happy1 && happy2) {
+      // 触发烟花
+      const happyColors = [
+        s1?.dataset.originalColor,
+        s2?.dataset.originalColor
+      ].filter(Boolean);
+      startContinuousFireworks(happyColors);
+    }
+    orbitAnimationId = requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function stopOrbit() {
+  if (!isOrbiting) return;
+  isOrbiting = false;
+  stopViolinCello();
+  if (orbitAnimationId) {
+    cancelAnimationFrame(orbitAnimationId);
+    orbitAnimationId = null;
+  }
 }
