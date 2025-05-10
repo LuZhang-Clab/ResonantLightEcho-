@@ -3,7 +3,7 @@ window.addEventListener('load', () => {
   // 初始化诗句元素
   poemElement = document.getElementById('poem');
   if (poemElement) {
-    poemElement.innerHTML = "Capturing stray resonance frequencies…";
+    poemElement.innerHTML = "In the depths of the cosmos lies the Starfield of Resonance, a hidden energy field that resonates with smiles. <br>When two sincere stars meet here, they ignite splendid nebular fireworks.<br> Explore it, shall we?";
     poemElement.classList.add('visible');
   }
   
@@ -40,11 +40,36 @@ let sparkleTimers = {}; // Store timers for each sparkle
 let fireworkInterval = null; // Store the firework interval
 let userColors = {}; // 存储所有用户的颜色映射
 let userCoordinates = {}; // 存储所有用户的坐标信息
+let faceAppearTimers = {}; // 存储人脸出现的计时器
 let faceDisappearTimers = {}; // 存储人脸消失的计时器
 let poemElement = null; // 存储诗句元素引用
 let isFaceDetected = false; // 跟踪是否有人脸被检测到
 let fireworkHasTriggered = false; // 跟踪烟花是否已触发过
 let loneSmileTimeout = null; // 存储单人微笑超时计时器
+
+// 替换为新的光球颜色系列
+const SPARKLE_COLORS = [
+  '#9eedd8',
+  '#c268e4',
+  '#f18254',
+  '#e0bbda',
+  '#99e8ed',
+  '#ae69ba',
+  '#93deff',
+  '#F0FFFF',
+  '#89CFF0',
+  '#CCCCFF',
+  '#9FE2BF',
+  '#EADDCA',
+  '#9F2B68',
+  '#DA70D6',
+  '#D8BFD8',
+  '#E37383',
+  '#CBC3E3',
+  '#FFFF8F',
+  '#FFF8DC',
+  '#BDB5D5'
+];
 
 // Load Face-API.js models
 async function loadModels() {
@@ -194,7 +219,7 @@ function setupConnection(initiator, theirSocketId) {
         if (sparkleElements[socketId]) {
           const sparkle = sparkleElements[socketId];
           // 更新颜色
-          sparkle.style.backgroundColor = color;
+          sparkle.style.setProperty('--sparkle-main', color);
           sparkle.dataset.originalColor = color;
           
           // 更新坐标显示
@@ -212,7 +237,7 @@ function setupConnection(initiator, theirSocketId) {
         
         // 如果已经创建了这个用户的粒子，更新其颜色
         if (sparkleElements[socketId]) {
-          sparkleElements[socketId].style.backgroundColor = color;
+          sparkleElements[socketId].style.setProperty('--sparkle-main', color);
           sparkleElements[socketId].dataset.originalColor = color;
         }
       } 
@@ -235,7 +260,7 @@ function setupConnection(initiator, theirSocketId) {
         if (sparkleElements[socket.id]) {
           const sparkle = sparkleElements[socket.id];
           // 更新颜色
-          sparkle.style.backgroundColor = userColors[socket.id];
+          sparkle.style.setProperty('--sparkle-main', userColors[socket.id]);
           sparkle.dataset.originalColor = userColors[socket.id];
           
           // 更新坐标
@@ -298,6 +323,13 @@ function startFaceDetection(videoEl, canvasId) {
   const displaySize = { width: videoEl.width, height: videoEl.height };
   faceapi.matchDimensions(canvas, displaySize);
 
+  // 获取canvas的上下文
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) {
+    console.warn('Failed to get canvas context');
+    return;
+  }
+
   if (!effectsLayer) {
     effectsLayer = document.getElementById('effects-layer');
     if (!effectsLayer) {
@@ -305,22 +337,6 @@ function startFaceDetection(videoEl, canvasId) {
       return;
     }
   }
-
-  // Ensure socket is initialized and connected
-  if (!socket || !socket.id) {
-    console.warn('Socket not initialized or not connected');
-    return;
-  }
-
-  // Get peerId
-  const peerId = canvasId === 'myCanvas' ? socket.id : canvasId.replace('canvas_', '');
-  if (!peerId) {
-    console.warn('Invalid peerId generated in startFaceDetection:', { canvasId, socketId: socket.id });
-    return;
-  }
-
-  // Create context with willReadFrequently property
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   // 确保获取诗句元素引用
   if (!poemElement) {
@@ -345,175 +361,159 @@ function startFaceDetection(videoEl, canvasId) {
     faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
     faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
 
+    // 处理检测到的所有人脸
     if (resizedDetections.length > 0) {
-      // 清除人脸消失计时器（如果存在）
-      if (faceDisappearTimers[peerId]) {
-        clearTimeout(faceDisappearTimers[peerId]);
-        delete faceDisappearTimers[peerId];
-      }
-      
       // 标记有人脸被检测到
       isFaceDetected = true;
       
       // 显示诗句，如果所有人脸都消失过，则重置诗句内容为初始状态
       if (poemElement) {
-        // 确保当人脸出现时，诗句内容切换到初始诗句
-        // 但如果当前是单人微笑的诗句，则保持不变
-        if (poemElement.innerHTML === "Capturing stray resonance frequencies…" ||
+        if (poemElement.innerHTML === "In the depths of the cosmos lies the Starfield of Resonance, a hidden energy field that resonates with smiles. <br>When two sincere stars meet here, they ignite splendid nebular fireworks.<br> Explore it, shall we? " ||
             !poemElement.classList.contains('visible')) {
-          // 重置为初始诗句内容
-          poemElement.innerHTML = "Every smile is a unique frequency<br>When two waves resonate<br>A new cosmos is born.";
-          
-          // 确保诗句可见
+          poemElement.innerHTML = "Every smile of joy pulses in its own wavelength. <br> When paried flows converge, brilliant flares bloom.<br>";
           if (!poemElement.classList.contains('visible')) {
             poemElement.classList.add('visible');
           }
         }
       }
-      
-      const happiness = resizedDetections[0].expressions.happy;
-      happinessStates[peerId] = happiness;
-      
-      // 如果用户出现但没有光点，或者光点处于隐藏状态，需要重新创建/显示光点
-      if (!sparkleElements[peerId] || sparkleElements[peerId].classList.contains('hidden')) {
-        // 如果是本地用户，生成新颜色并通知所有远程用户
-        if (peerId === socket.id) {
-          // 生成新的随机颜色
-          generateNewUserColor();
+
+      // 为每个检测到的人脸创建或更新sparkle
+      resizedDetections.forEach((detection, index) => {
+        const faceId = `face_${index}`;
+        const happiness = detection.expressions.happy;
+        happinessStates[faceId] = happiness;
+
+        // 获取人脸在视频中的位置
+        const faceBox = detection.detection.box;
+        
+        // 计算人脸在视频中的相对位置（0-1之间）
+        const relativeX = (faceBox.x + (faceBox.width / 2)) / canvas.width;
+        const relativeY = (faceBox.y + (faceBox.height / 2)) / canvas.height;
+        
+        // 将相对位置映射到窗口大小
+        const windowX = window.innerWidth * (1 - relativeX); // 考虑镜像效果
+        const windowY = window.innerHeight * relativeY;
+
+        // 清除这个face的消失计时器（如果存在）
+        if (faceDisappearTimers[faceId]) {
+          clearTimeout(faceDisappearTimers[faceId]);
+          delete faceDisappearTimers[faceId];
+        }
+
+        // 如果这个人脸还没有对应的sparkle，创建一个新的
+        if (!sparkleElements[faceId]) {
+          createFixedSparkle(faceId);
+        }
+
+        // 如果这个人脸还没有开始计时，开始计时
+        if (!faceAppearTimers[faceId]) {
+          faceAppearTimers[faceId] = setTimeout(() => {
+            // 3秒后，如果sparkle还存在，将其变为实心并分配颜色
+            if (sparkleElements[faceId]) {
+              const sparkle = sparkleElements[faceId];
+              sparkle.classList.add('filled');
+              
+              // 生成并设置颜色
+              const color = generateNewUserColor();
+              sparkle.style.setProperty('--sparkle-main', color);
+              sparkle.dataset.originalColor = color;
+            }
+          }, 3000);
+        }
+
+        // 更新sparkle的状态和位置
+        if (sparkleElements[faceId]) {
+          const sparkle = sparkleElements[faceId];
           
-          // 通知所有连接的对等端
-          Object.values(myFriends).forEach(peerConnection => {
-            if (peerConnection.connected) {
-              const userData = {
-                type: 'user-data',
-                socketId: socket.id,
-                color: userColors[socket.id],
-                coordinates: userCoordinates[socket.id]
-              };
-              peerConnection.send(JSON.stringify(userData));
+          // 更新sparkle位置
+          sparkle.style.left = `${windowX}px`;
+          sparkle.style.top = `${windowY}px`;
+          
+          // 处理微笑状态
+          if (happiness > 0.8) {
+            if (!sparkle.classList.contains('happy')) {
+              sparkle.classList.add('happy');
+              sparkle.classList.remove('expired');
+              
+              if (sparkleTimers[faceId]) {
+                clearTimeout(sparkleTimers[faceId]);
+              }
+              
+              sparkleTimers[faceId] = setTimeout(() => {
+                sparkle.classList.add('expired');
+                checkFireworkState();
+              }, 10000);
             }
-          });
-        } 
-        // 如果是远程用户，始终请求其颜色信息
-        else {
-          // 找到对应的连接
-          const peerConnection = myFriends[peerId];
-          if (peerConnection && peerConnection.connected) {
-            // 发送颜色请求
-            const requestData = {
-              type: 'request-color',
-              socketId: socket.id
-            };
-            peerConnection.send(JSON.stringify(requestData));
+          } else {
+            sparkle.classList.remove('happy');
+            if (sparkleTimers[faceId]) {
+              clearTimeout(sparkleTimers[faceId]);
+              delete sparkleTimers[faceId];
+            }
+            clearLoneSmileTimeout();
           }
         }
-        
-        // 创建或显示光点
-        if (!sparkleElements[peerId]) {
-          createFixedSparkle(peerId);
-        } else {
-          sparkleElements[peerId].classList.remove('hidden');
-        }
-      }
+      });
+
+      // 检查烟花状态
+      checkFireworkState();
+    } else {
+      // 没有检测到人脸
+      isFaceDetected = false;
       
-      if (sparkleElements[peerId]) {
-        const sparkle = sparkleElements[peerId];
-        
-        // Handle happiness state change
-        if (happiness > 0.8) {
-          if (!sparkle.classList.contains('happy')) {
-            // Start new happy state
-            sparkle.classList.add('happy');
-            sparkle.classList.remove('expired');
-            
-            // Clear existing timer if any
-            if (sparkleTimers[peerId]) {
-              clearTimeout(sparkleTimers[peerId]);
+      // 为所有现有的sparkle设置消失计时器
+      Object.keys(sparkleElements).forEach(faceId => {
+        if (!faceDisappearTimers[faceId]) {
+          faceDisappearTimers[faceId] = setTimeout(() => {
+            // 3秒后，如果sparkle还存在，将其移除
+            if (sparkleElements[faceId]) {
+              const sparkle = sparkleElements[faceId];
+              // 先添加淡出动画
+              sparkle.style.transition = 'opacity 0.5s ease-out';
+              sparkle.style.opacity = '0';
+              
+              // 同时淡出坐标显示
+              const coordsElement = sparkle.querySelector('.sparkle-coordinates');
+              if (coordsElement) {
+                coordsElement.style.transition = 'opacity 0.5s ease-out';
+                coordsElement.style.opacity = '0';
+              }
+              
+              // 等待淡出动画完成后移除元素
+              setTimeout(() => {
+                sparkle.remove();
+                delete sparkleElements[faceId];
+                delete happinessStates[faceId];
+                delete userColors[faceId];
+                delete userCoordinates[faceId];
+                delete faceAppearTimers[faceId];
+              }, 500);
             }
-            
-            // Set new timer
-            sparkleTimers[peerId] = setTimeout(() => {
-              sparkle.classList.add('expired');
-              checkFireworkState();
-            }, 10000);
-          }
-        } else {
-          // Remove happy state
-          sparkle.classList.remove('happy');
-          if (sparkleTimers[peerId]) {
-            clearTimeout(sparkleTimers[peerId]);
-            delete sparkleTimers[peerId];
-          }
-          // 当用户不再微笑时，清除单人微笑计时器
-          clearLoneSmileTimeout();
+          }, 3000);
+        }
+      });
+
+      // 更新诗句
+      if (poemElement) {
+        poemElement.innerHTML = "In the depths of the cosmos lies the Starfield of Resonance, a hidden energy field that resonates with smiles. <br>When two sincere stars meet here, they ignite splendid nebular fireworks.<br> Explore it, shall we?";
+        if (!poemElement.classList.contains('visible')) {
+          poemElement.classList.add('visible');
         }
       }
 
-      // Check firework state
-      checkFireworkState();
-    } else {
-      // 没有检测到人脸，设置一个延迟，在一定时间后认为人脸真的消失了
-      if (!faceDisappearTimers[peerId]) {
-        faceDisappearTimers[peerId] = setTimeout(() => {
-          // 人脸确认消失，进行清理
-          happinessStates[peerId] = 0;
-          
-          if (sparkleElements[peerId]) {
-            const sparkle = sparkleElements[peerId];
-            // 移除happy状态
-            sparkle.classList.remove('happy');
-            
-            // 清除计时器
-            if (sparkleTimers[peerId]) {
-              clearTimeout(sparkleTimers[peerId]);
-              delete sparkleTimers[peerId];
-            }
-            
-            // 隐藏光点（坐标会随父元素一起隐藏）
-            sparkle.classList.add('hidden');
-            
-            // 删除颜色和坐标信息
-            delete userColors[peerId];
-            delete userCoordinates[peerId];
-          }
-          
-          // 检查是否还有其他用户的人脸
-          const anyFaceDetected = Object.keys(happinessStates).some(id => {
-            return happinessStates[id] > 0;
-          });
-          
-          // 如果没有任何人脸，隐藏诗句并重置fireworkHasTriggered状态
-          if (!anyFaceDetected) {
-            isFaceDetected = false;
-            if (poemElement) {
-              // 显示"Capturing stray resonance frequencies…"
-              poemElement.innerHTML = "Capturing stray resonance frequencies…";
-              // 保持诗句可见
-              if (!poemElement.classList.contains('visible')) {
-                poemElement.classList.add('visible');
-              }
-            }
-            // 重置烟花触发状态，以便下次人脸重新出现时诗句为初始状态
-            fireworkHasTriggered = false;
-            // 清除单人微笑计时器
-            clearLoneSmileTimeout();
-          }
-          
-          checkFireworkState();
-          delete faceDisappearTimers[peerId];
-        }, 1000); // 1秒后确认人脸消失
-      }
+      // 重置烟花状态
+      fireworkHasTriggered = false;
+      clearLoneSmileTimeout();
+      stopFireworks();
     }
   }, 100);
 }
 
-// 为用户生成一个新的随机颜色
+// 修改generateNewUserColor函数，使用新的颜色数组
 function generateNewUserColor() {
-  const colors = ['#ff0', '#f0f', '#0ff', '#f00', '#0f0'];
-  // 完全随机选择一个颜色
-  const randomColor = colors[Math.floor(Math.random() * colors.length)];
-  userColors[socket.id] = randomColor;
-  return randomColor;
+  // 随机选取一个颜色
+  const color = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+  return color;
 }
 
 // 为用户生成一个新的随机坐标
@@ -530,56 +530,49 @@ function generateNewUserCoordinates() {
 
 // Check if fireworks should be shown or stopped
 function checkFireworkState() {
-  // Get all detected users
-  const detectedPeers = Object.keys(happinessStates);
+  // 获取所有检测到的人脸
+  const detectedFaces = Object.keys(happinessStates);
   
-  // If no users are detected, stop fireworks
-  if (detectedPeers.length === 0) {
+  // 如果没有检测到人脸，停止烟花
+  if (detectedFaces.length === 0) {
     stopFireworks();
-    clearLoneSmileTimeout(); // 清除单人微笑计时器
+    clearLoneSmileTimeout();
     return;
   }
 
-  // Get users who are visible and happy
-  const happyPeers = detectedPeers.filter(peerId => {
-    // 检查用户是否在视频中（通过检查sparkleElements是否存在且不隐藏）
-    const isVisible = sparkleElements[peerId] !== undefined && 
-                     !sparkleElements[peerId].classList.contains('hidden');
-    // 检查用户是否开心
-    const isHappy = happinessStates[peerId] > 0.8;
-    return isVisible && isHappy;
+  // 获取所有开心的人脸
+  const happyFaces = detectedFaces.filter(faceId => {
+    const isHappy = happinessStates[faceId] > 0.8;
+    return isHappy;
   });
 
-  // Only start fireworks if there are at least 2 happy peers
-  if (happyPeers.length >= 2) {
-    // Start or continue fireworks
+  // 如果有至少2个人脸开心，触发烟花
+  if (happyFaces.length >= 2) {
     if (!fireworkInterval) {
-      // 获取开心用户的颜色，传递给startContinuousFireworks函数
-      const happyColors = happyPeers
-        .map(peerId => sparkleElements[peerId]?.dataset.originalColor)
+      // 获取开心人脸的颜色
+      const happyColors = happyFaces
+        .map(faceId => sparkleElements[faceId]?.dataset.originalColor)
         .filter(color => color);
       startContinuousFireworks(happyColors);
     }
-    // 清除单人微笑计时器，因为现在有多人开心
     clearLoneSmileTimeout();
-  } else if (happyPeers.length === 1) {
-    // 只有一个人开心
-    // 停止烟花效果
+  } else if (happyFaces.length === 1) {
+    // 只有一个人脸开心
     stopFireworks();
     
     // 如果还没有设置单人微笑计时器，则设置一个
     if (!loneSmileTimeout) {
       loneSmileTimeout = setTimeout(() => {
-        // 如果10秒后仍然只有一个人开心，且没有触发烟花效果
+        // 如果10秒后仍然只有一个人脸开心，且没有触发烟花效果
         if (!fireworkInterval && poemElement) {
-          // 获取开心的用户
-          const happyPeer = happyPeers[0];
-          // 检查这个用户是否仍然开心
-          if (sparkleElements[happyPeer] && 
-              !sparkleElements[happyPeer].classList.contains('hidden') &&
-              happinessStates[happyPeer] > 0.8) {
+          // 获取开心的人脸
+          const happyFace = happyFaces[0];
+          // 检查这个脸是否仍然开心
+          if (sparkleElements[happyFace] && 
+              !sparkleElements[happyFace].classList.contains('hidden') &&
+              happinessStates[happyFace] > 0.8) {
             // 显示单人微笑的诗句
-            poemElement.innerHTML = "Lone resonator, your frequency will find its echo someday.";
+            poemElement.innerHTML = "Drifting star, your frequency will one day meet its harmonic twin.";
           }
         }
         // 清除计时器，以便下次可以再次触发
@@ -587,9 +580,9 @@ function checkFireworkState() {
       }, 10000); // 10秒后显示
     }
   } else {
-    // 没有人开心
+    // 没有人脸开心
     stopFireworks();
-    clearLoneSmileTimeout(); // 清除单人微笑计时器
+    clearLoneSmileTimeout();
   }
 }
 
@@ -602,21 +595,21 @@ function clearLoneSmileTimeout() {
 }
 
 // Start continuous fireworks
-function startContinuousFireworks(happyColors = []) {
+function startContinuousFireworks(colors) {
   if (fireworkInterval) return;
   
-  // 将所有粒子颜色改为黑色
-  Object.values(sparkleElements).forEach(sparkle => {
-    if (!sparkle.classList.contains('hidden')) {
-      sparkle.style.backgroundColor = '#000000'; // 黑色
-      
-      // 隐藏坐标显示
-      const coordsElement = sparkle.querySelector('.sparkle-coordinates');
-      if (coordsElement) {
-        coordsElement.style.opacity = '0';
+  // 让所有参与烟花的sparkle变为透明
+  if (Array.isArray(colors)) {
+    Object.keys(sparkleElements).forEach(faceId => {
+      const sparkle = sparkleElements[faceId];
+      if (sparkle && colors.includes(sparkle.dataset.originalColor)) {
+        sparkle.style.backgroundColor = 'transparent'; // 变为透明
+        // 隐藏坐标
+        const coords = sparkle.querySelector('.sparkle-coordinates');
+        if (coords) coords.style.opacity = 0;
       }
-    }
-  });
+    });
+  }
   
   // 将诗句变为黑色（完全不可见）
   if (poemElement) {
@@ -637,7 +630,7 @@ function startContinuousFireworks(happyColors = []) {
 
   // Create fireworks every 500ms
   fireworkInterval = setInterval(() => {
-    createFirework(happyColors);
+    createFirework(colors);
   }, 500);
 }
 
@@ -669,7 +662,7 @@ function stopFireworks() {
     
     // 如果烟花曾经触发过，更改诗句内容
     if (fireworkHasTriggered && poemElement) {
-      poemElement.innerHTML = "What matters is: your frequency once rippled through the cosmos.";
+      poemElement.innerHTML = "What matters is: your resonance once rippled in the depths of another soul's cosmos.";
     }
     
     // 恢复诗句为金色（可见）
@@ -717,48 +710,23 @@ function createFirework(userColors = []) {
 }
 
 // Create fixed sparkle for a peer
-function createFixedSparkle(peerId) {
-  // Check if peerId is valid
-  if (!peerId) {
-    console.warn('Invalid peerId provided to createFixedSparkle');
+function createFixedSparkle(faceId) {
+  // Check if faceId is valid
+  if (!faceId) {
+    console.warn('Invalid faceId provided to createFixedSparkle');
     return;
   }
 
-  let userColor;
-  let coordinates;
+  // 生成坐标
+  const coordinates = generateNewUserCoordinates();
+  userCoordinates[faceId] = coordinates;
   
-  // 如果是本地用户
-  if (peerId === socket.id) {
-    // 检查是否已经有颜色，如果没有则生成
-    userColor = userColors[peerId] || generateNewUserColor();
-    // 检查是否已经有坐标，如果没有则生成
-    coordinates = userCoordinates[peerId] || generateNewUserCoordinates();
-  } else {
-    // 如果是远程用户，使用从对方接收到的颜色和坐标
-    userColor = userColors[peerId];
-    coordinates = userCoordinates[peerId];
-    
-    // 如果还没有收到远程用户的颜色，使用默认颜色
-    if (!userColor) {
-      const colors = ['#ff0', '#f0f', '#0ff', '#f00', '#0f0'];
-      userColor = colors[0]; // 默认使用第一个颜色，后续会更新
-    }
-    
-    // 如果还没有收到远程用户的坐标，使用临时坐标
-    if (!coordinates) {
-      coordinates = { l: 0, b: 0 }; // 使用默认坐标，后续会更新
-    }
-  }
-
   // 格式化坐标显示
   const coordsText = `(${coordinates.l}°, ${coordinates.b}°)`;
 
-  // 如果已经存在这个用户的粒子，只需更新颜色和坐标
-  if (sparkleElements[peerId]) {
-    const sparkle = sparkleElements[peerId];
-    sparkle.style.backgroundColor = userColor;
-    sparkle.dataset.originalColor = userColor;
-    
+  // 如果已经存在这个face的粒子，只需更新坐标
+  if (sparkleElements[faceId]) {
+    const sparkle = sparkleElements[faceId];
     // 更新坐标显示
     let coordsElement = sparkle.querySelector('.sparkle-coordinates');
     if (!coordsElement) {
@@ -767,31 +735,24 @@ function createFixedSparkle(peerId) {
       sparkle.appendChild(coordsElement);
     }
     coordsElement.textContent = coordsText;
-    
     sparkle.classList.remove('hidden');
     return;
   }
 
   const sparkle = document.createElement('div');
   sparkle.className = 'sparkle';
-  
-  // 设置与烟花粒子相同的样式
-  sparkle.style.backgroundColor = userColor;
-  // 存储原始颜色，以便在烟花结束后恢复
-  sparkle.dataset.originalColor = userColor;
-  sparkle.style.width = '20px';
-  sparkle.style.height = '20px';
+  sparkle.style.width = '40px';
+  sparkle.style.height = '40px';
   sparkle.style.borderRadius = '50%';
   sparkle.style.boxShadow = 'none';
-  
-  // Calculate fixed position based on peerId
-  const hash = peerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const x = (hash % 80) + 10; // 10% to 90% of screen width
-  const y = ((hash * 7) % 80) + 10; // 10% to 90% of screen height
-  
-  sparkle.style.left = x + '%';
-  sparkle.style.top = y + '%';
-  
+  // 设置主色为CSS变量（初始为银色）
+  sparkle.style.setProperty('--sparkle-main', '#e0eaff');
+
+  // 添加透明发光的外环
+  const ring = document.createElement('div');
+  ring.className = 'sparkle-ring';
+  sparkle.appendChild(ring);
+
   // 添加坐标显示
   const coordsElement = document.createElement('div');
   coordsElement.className = 'sparkle-coordinates';
@@ -799,5 +760,130 @@ function createFixedSparkle(peerId) {
   sparkle.appendChild(coordsElement);
   
   effectsLayer.appendChild(sparkle);
-  sparkleElements[peerId] = sparkle;
+  sparkleElements[faceId] = sparkle;
+}
+
+// 星空生成函数
+function createStarfield(numStars = 75) {
+  let starfield = document.getElementById('starfield');
+  if (!starfield) {
+    starfield = document.createElement('div');
+    starfield.id = 'starfield';
+    document.body.appendChild(starfield);
+  }
+  const stars = [];
+  // 45颗银色星星
+  for (let i = 0; i < 45; i++) {
+    const star = document.createElement('div');
+    const size = Math.random() * 2 + 1; // 1~3px
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const opacity = Math.random() * 0.7 + 0.3;
+    const duration = Math.random() * 2 + 1; // 1~3s
+    const delay = Math.random() * 3;
+    // 漂浮速度（缓慢）
+    const vx = (Math.random() - 0.5) * 0.02; // -0.01 ~ 0.01
+    const vy = (Math.random() - 0.5) * 0.02;
+    star.style.position = 'absolute';
+    star.style.left = `${x}vw`;
+    star.style.top = `${y}vh`;
+    star.style.width = `${size}px`;
+    star.style.height = `${size}px`;
+    star.style.borderRadius = '50%';
+    star.style.background = '#e0eaff';
+    star.style.opacity = opacity;
+    star.style.boxShadow = `0 0 8px 2px #e0eaff, 0 0 24px 4px #b0c4ff`;
+    star.style.animation = `star-twinkle ${duration}s infinite alternate`;
+    star.style.animationDelay = `${delay}s`;
+    // 自定义属性用于动画
+    star.dataset.x = x;
+    star.dataset.y = y;
+    star.dataset.vx = vx;
+    star.dataset.vy = vy;
+    starfield.appendChild(star);
+    stars.push(star);
+  }
+  // 30颗彩色星星
+  for (let i = 0; i < 30; i++) {
+    const star = document.createElement('div');
+    const size = Math.random() * 2 + 1; // 1~3px
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const opacity = Math.random() * 0.7 + 0.3;
+    const duration = Math.random() * 2 + 1; // 1~3s
+    const delay = Math.random() * 3;
+    const vx = (Math.random() - 0.5) * 0.02;
+    const vy = (Math.random() - 0.5) * 0.02;
+    // 随机选取光球颜色
+    const color = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+    star.style.position = 'absolute';
+    star.style.left = `${x}vw`;
+    star.style.top = `${y}vh`;
+    star.style.width = `${size}px`;
+    star.style.height = `${size}px`;
+    star.style.borderRadius = '50%';
+    star.style.background = color;
+    star.style.opacity = opacity;
+    star.style.boxShadow = `0 0 8px 2px ${color}, 0 0 24px 4px ${color}`;
+    star.style.animation = `star-twinkle ${duration}s infinite alternate`;
+    star.style.animationDelay = `${delay}s`;
+    star.dataset.x = x;
+    star.dataset.y = y;
+    star.dataset.vx = vx;
+    star.dataset.vy = vy;
+    starfield.appendChild(star);
+    stars.push(star);
+  }
+
+  // 动画：让星星缓慢漂浮
+  function animateStars() {
+    for (const star of stars) {
+      let x = parseFloat(star.dataset.x);
+      let y = parseFloat(star.dataset.y);
+      const vx = parseFloat(star.dataset.vx);
+      const vy = parseFloat(star.dataset.vy);
+      x += vx;
+      y += vy;
+      // 循环漂浮，超出边界回到另一侧
+      if (x < 0) x += 100;
+      if (x > 100) x -= 100;
+      if (y < 0) y += 100;
+      if (y > 100) y -= 100;
+      star.dataset.x = x;
+      star.dataset.y = y;
+      star.style.left = `${x}vw`;
+      star.style.top = `${y}vh`;
+    }
+    requestAnimationFrame(animateStars);
+  }
+  animateStars();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  createStarfield(75);
+  // 不显示任何提示，用户首次点击页面任意处时播放音效
+  document.body.addEventListener('click', playSpaceAmbient, { once: true });
+});
+
+// 播放宇宙白噪音音效
+function playSpaceAmbient() {
+  let audio = document.getElementById('space-audio');
+  if (!audio) {
+    audio = document.createElement('audio');
+    audio.id = 'space-audio';
+    audio.src = 'AmbientSpaceNoise.mp3';
+    audio.loop = true;
+    audio.preload = 'auto';
+    document.body.appendChild(audio);
+  }
+  audio.volume = 0.5;
+  audio.play();
+}
+
+// 在显示初始介绍语时调用播放
+function showIntroText() {
+  const poemElement = document.getElementById('poem');
+  poemElement.innerHTML = `In the depths of the cosmos lies the Starfield of Resonance, a hidden energy field that resonates with smiles. <br>When two sincere stars meet here, they ignite splendid nebular fireworks.<br> Explore it, shall we?`;
+  poemElement.classList.add('visible');
+  playSpaceAmbient();
 }

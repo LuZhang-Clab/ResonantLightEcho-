@@ -1,9 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Satisfy&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+
 body {
-  background-color:black;
+  min-height: 100vh;
+  min-width: 100vw;
   margin: 0;
   padding: 0;
-  width: 100vw;
-  height: 100vh;
+  background: radial-gradient(ellipse at 60% 40%, #14141e 0%, #120a1e 30%, #0d0612 60%, #05050a 85%, #000 100%);
+  overflow: hidden;
+  position: relative;
   touch-action: none;
   -webkit-touch-action: none;
   -ms-touch-action: none;
@@ -13,17 +19,15 @@ body {
   -ms-user-select: none;
 }
 
-canvas {
-  position: absolute;
-  /*top:0%;
-  left: 0%;*/
-  touch-action: none;
-  -webkit-touch-action: none;
-  -ms-touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+video, canvas {
+  display: none !important;
+}
+
+#starfield {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  z-index: 10;
+  pointer-events: none;
 }
 
 #effects-layer {
@@ -34,8 +38,8 @@ canvas {
   height: 100%;
   pointer-events: none;
   z-index: 1000;
-  background-color: rgba(0, 0, 0, 1);  /* 完全不透明的黑色背景 */
-  opacity: 1;  /* 确保不透明 */
+  background-color: rgba(0, 0, 0, 0);  /* 透明 */
+  opacity: 1;
   touch-action: none;
   -webkit-touch-action: none;
   -ms-touch-action: none;
@@ -45,31 +49,47 @@ canvas {
   -ms-user-select: none;
 }
 
-
 .sparkle {
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  opacity: 0.8;
+  opacity: 0.97;
   transform: scale(1);
-  transition: opacity 0.5s ease-out;
+  transition: all 0.5s ease-out;
   z-index: 9999;
-} 
+  background: radial-gradient(circle at 60% 40%, #fff9, var(--sparkle-main, #e0eaff) 55%, rgba(224,234,255,0.2) 80%, transparent 100%);
+  box-shadow:
+    0 0 32px 8px var(--sparkle-main, #e0eaff),
+    0 0 80px 24px var(--sparkle-main, #e0eaff),
+    0 0 120px 48px var(--sparkle-main, #e0eaff),
+    0 0 200px 80px var(--sparkle-main, #e0eaff, 0.2);
+  border: none;
+}
+
+.sparkle.filled {
+  background: radial-gradient(circle at 60% 40%, #fff9, var(--sparkle-main, #e0eaff) 55%, rgba(224,234,255,0.2) 80%, transparent 100%);
+  box-shadow:
+    0 0 48px 16px var(--sparkle-main, #e0eaff),
+    0 0 120px 40px var(--sparkle-main, #e0eaff),
+    0 0 200px 80px var(--sparkle-main, #e0eaff, 0.2);
+  opacity: 0.97;
+}
 
 .sparkle-coordinates {
   position: absolute;
   font-family: 'Cormorant Garamond', serif;
-  font-size: 14px;
+  font-size: 16px;
   color: gold;
   text-align: center;
-  width: 100px;
+  width: 120px;
   left: -40px;
-  top: 25px;
+  top: 45px;
   text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
   pointer-events: none;
   z-index: 9998;
   opacity: 0.8;
+  transition: opacity 0.5s ease-out;
 }
 
 .sparkle.hidden {
@@ -90,7 +110,6 @@ canvas {
   50% { transform: scale(1.4); opacity: 1; }
   100% { transform: scale(0.6); opacity: 0.6; }
 }
-
 
 .firework {
   position: absolute;
@@ -140,6 +159,47 @@ canvas {
   color: black;
   text-shadow: none;
   opacity: 0;
+}
+
+.poem-text,
+.sparkle-coordinates,
+h1, h2, h3, h4, h5, h6, p, span, .silver-text {
+  font-family: 'Satisfy', cursive;
+  color: #fff !important;
+  text-shadow: none;
+}
+
+@keyframes star-twinkle {
+  from { opacity: 0.3; }
+  50% { opacity: 1; }
+  to { opacity: 0.3; }
+}
+
+.sparkle-ring {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) rotateX(60deg);
+  width: 64px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(224,234,255,0.25);
+  box-shadow: 0 0 16px 4px rgba(224,234,255,0.18);
+  pointer-events: none;
+  z-index: 1;
+  background: transparent;
+  overflow: hidden;
+}
+
+.sparkle-ring::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: #0000;
+  /* 遮住下半部分 */
+  clip-path: inset(50% 0 0 0);
+  z-index: 2;
 }
 
 
