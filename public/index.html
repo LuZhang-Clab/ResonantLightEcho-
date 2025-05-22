@@ -8,11 +8,6 @@
   <title>Real-time Facial Expression Detection</title>
   <!-- Add favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
-  <!-- 添加优雅字体 -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet">
-
 </head>
 <body>
   <!-- 粒子画布容器 - 放在最前面 -->
@@ -36,12 +31,11 @@
     Explore it, shall we?
   </div>
 
-  <!-- Add audio element for firework sound -->
- <audio id="fireworkSound" src="https://cdn.glitch.global/bec83eca-c578-4021-acb8-8c201b2379c7/public%2FFireworkSound.mp3?v=1743495218339" preload="auto"></audio>
+  <!-- 使用本地音频文件 -->
+  <audio id="fireworkSound" src="FireworkSound.mp3" preload="auto"></audio>
 
-  <script src="libraries/simplepeer.min.js"></script>
-  <script defer src="libraries/face-api.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- 使用本地库文件 -->
+  <script src="libraries/face-api.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

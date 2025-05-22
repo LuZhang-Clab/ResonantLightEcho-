@@ -19,19 +19,10 @@ window.addEventListener('beforeunload', () => {
   
   // 停止烟花效果
   stopFireworks();
-  
-  // 清理所有连接
-  Object.values(myFriends).forEach(connection => {
-    if (connection) {
-      connection.destroy();
-    }
-  });
 });
 
 // Global variables
 let myLocalMediaStream; // Stores the local video stream
-let socket; // WebSocket connection object
-let myFriends = {}; // Stores all connected peers
 let faceCanvas = {}; // Stores the face detection canvas for each peer
 let happinessStates = {}; // Stores happiness states for each peer
 let effectsLayer; // Reference to the effects layer
@@ -52,29 +43,24 @@ let orbitAnimationId = null;
 let violinCelloAudio = null;
 let orbitSparkleIds = [];
 let orbitBasePositions = [];
+const ORBIT_NEAR_PERCENT = 0.12; // 12%屏幕宽度为靠近
+const ORBIT_FAR_PERCENT = 0.8;  // 80%屏幕宽度为远离
+let poemTimeout = null;
 
 // 替换为新的光球颜色系列
 const SPARKLE_COLORS = [
-  '#9eedd8',
-  '#c268e4',
-  '#f18254',
-  '#e0bbda',
-  '#99e8ed',
-  '#ae69ba',
-  '#93deff',
-  '#F0FFFF',
-  '#89CFF0',
-  '#CCCCFF',
-  '#9FE2BF',
-  '#EADDCA',
-  '#9F2B68',
-  '#DA70D6',
-  '#D8BFD8',
-  '#E37383',
-  '#CBC3E3',
-  '#FFFF8F',
-  '#FFF8DC',
-  '#BDB5D5'
+  '#00FFFF', // 青色
+  '#E1C16E', // 金色
+  '#AFE1AF', // 淡绿色
+  '#FF7518', // 橙色
+  '#DE3163', // 深粉红
+  '#FF10F0', // 亮粉红
+  '#FFC0CB', // 粉红
+  '#CF9FFF', // 淡紫色
+  '#7F00FF', // 紫色
+  '#D70040', // 深红
+  '#FAFA33', // 黄色
+  '#FAFA33'  // 黄色
 ];
 
 // Load Face-API.js models
@@ -107,13 +93,11 @@ async function initCapture() {
       console.log('Video metadata loaded, starting playback...');
       videoEl.play();
       adjustCanvasSize(videoEl, 'myCanvas'); // Adjust Canvas to match Video
+      startFaceDetection(videoEl, 'myCanvas');
     };
   } catch (err) {
     console.error("Error accessing webcam: ", err);
   }
-
-  // Set up socket connection first
-  setupSocket();
 }
 
 // Adjust canvas size to match video dimensions
@@ -126,189 +110,6 @@ function adjustCanvasSize(videoEl, canvasId) {
     faceapi.matchDimensions(canvas, { width: canvas.width, height: canvas.height });
     console.log(`Canvas resized to ${canvas.width}x${canvas.height}`);
   }
-}
-
-// STEP 6: Establish WebSocket connection
-function setupSocket() {
-  socket = io(); // Connect to the WebSocket server
-
-  // Listen for a successful WebSocket connection
-  socket.on('connect', () => {
-    console.log('Client connected! My socket id:', socket.id);
-    
-    socket.emit('list'); // Request the list of online users from the server
-    
-    // Start face detection after socket connection is established
-    const videoEl = document.getElementById('myVideo');
-    if (videoEl && videoEl.readyState >= 2) { // Ensure video is ready
-      startFaceDetection(videoEl, 'myCanvas');
-    }
-  });
-
-  // Receive the list of online users from the server
-  socket.on('listresults', data => {
-    for (let i = 0; i < data.length; i++) {
-      if (data[i] != socket.id) { // Connect only to other users, excluding yourself
-        let theirSocketId = data[i]; // Get the peer's socket ID
-        let peerConnection = setupConnection(true, theirSocketId); // Initiate a P2P connection
-        myFriends[data[i]] = peerConnection; // Store the connection
-      }
-    }
-  });
-
-  // Listen for WebRTC signaling messages
-  socket.on('signal', (to, from, data) => {
-    if (to != socket.id) return; // Ensure the signal is intended for this user
-    let connection = myFriends[from]; // Get the corresponding peer connection
-    if (connection) {
-      connection.signal(data); // If the connection exists, pass the signal
-    } else {
-      // If the connection does not exist, create a new P2P connection
-      let theirSocketId = from;
-      let peerConnection = setupConnection(false, theirSocketId);
-      myFriends[from] = peerConnection; // Store the connection
-      peerConnection.signal(data); // Send the signal
-    }
-  });
-
-  // Listen for peer disconnection
-  socket.on('peer_disconnect', (socketId) => {
-    let connection = myFriends[socketId]; // Get the disconnected peer
-    if (connection) {
-      connection.destroy(); // Close the connection
-      delete myFriends[socketId]; // Remove from myFriends list
-      document.getElementById(socketId)?.remove(); // Remove the corresponding video element
-      document.getElementById(`canvas_${socketId}`)?.remove(); // Remove the corresponding canvas
-    }
-  });
-}
-
-// STEP 7: Set up WebRTC connection
-function setupConnection(initiator, theirSocketId) {
-  let peerConnection = new SimplePeer({ initiator }); // Create a P2P connection
-
-  // When the peer connection generates a signal, send it to the WebSocket server
-  peerConnection.on('signal', data => {
-    socket.emit('signal', theirSocketId, socket.id, data);
-  });
-
-  // Once the connection is established, send the local video stream
-  peerConnection.on('connect', () => {
-    console.log('Connected with:', theirSocketId);
-    peerConnection.addStream(myLocalMediaStream);
-    
-    // 连接建立后，如果有颜色和坐标信息，发送给对方
-    if (userColors[socket.id]) {
-      const userData = {
-        type: 'user-data',
-        socketId: socket.id,
-        color: userColors[socket.id],
-        coordinates: userCoordinates[socket.id] || generateNewUserCoordinates()
-      };
-      peerConnection.send(JSON.stringify(userData));
-    }
-  });
-
-  // 接收对方发送的数据
-  peerConnection.on('data', data => {
-    try {
-      const parsedData = JSON.parse(data);
-      // 处理用户数据（同时包含颜色和坐标）
-      if (parsedData.type === 'user-data') {
-        const { socketId, color, coordinates } = parsedData;
-        // 保存颜色信息
-        userColors[socketId] = color;
-        // 保存坐标信息
-        userCoordinates[socketId] = coordinates;
-        
-        // 如果已经创建了这个用户的粒子，更新其颜色和坐标
-        if (sparkleElements[socketId]) {
-          const sparkle = sparkleElements[socketId];
-          // 更新颜色
-          sparkle.style.setProperty('--sparkle-main', color);
-          sparkle.dataset.originalColor = color;
-          
-          // 更新坐标显示
-          const coordsElement = sparkle.querySelector('.sparkle-coordinates');
-          if (coordsElement) {
-            coordsElement.textContent = `(${coordinates.l}°, ${coordinates.b}°)`;
-          }
-        }
-      }
-      // 处理旧的颜色消息（向后兼容）
-      else if (parsedData.type === 'user-color') {
-        // 收到对方的颜色信息
-        const { socketId, color } = parsedData;
-        userColors[socketId] = color;
-        
-        // 如果已经创建了这个用户的粒子，更新其颜色
-        if (sparkleElements[socketId]) {
-          sparkleElements[socketId].style.setProperty('--sparkle-main', color);
-          sparkleElements[socketId].dataset.originalColor = color;
-        }
-      } 
-      // 处理颜色请求
-      else if (parsedData.type === 'request-color') {
-        // 每次收到颜色请求，重新生成颜色和坐标并发送
-        generateNewUserColor();
-        generateNewUserCoordinates();
-        
-        // 发送新生成的颜色和坐标
-        const userData = {
-          type: 'user-data',
-          socketId: socket.id,
-          color: userColors[socket.id],
-          coordinates: userCoordinates[socket.id]
-        };
-        peerConnection.send(JSON.stringify(userData));
-        
-        // 更新本地粒子
-        if (sparkleElements[socket.id]) {
-          const sparkle = sparkleElements[socket.id];
-          // 更新颜色
-          sparkle.style.setProperty('--sparkle-main', userColors[socket.id]);
-          sparkle.dataset.originalColor = userColors[socket.id];
-          
-          // 更新坐标
-          const coordsElement = sparkle.querySelector('.sparkle-coordinates');
-          if (coordsElement && userCoordinates[socket.id]) {
-            coordsElement.textContent = `(${userCoordinates[socket.id].l}°, ${userCoordinates[socket.id].b}°)`;
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to parse received data:', error);
-    }
-  });
-
-  // When a remote video stream is received, create a video element and play it
-  peerConnection.on('stream', stream => {
-    console.log('Incoming Stream from:', theirSocketId);
-
-    let theirVideoEl = document.createElement('video');
-    theirVideoEl.id = theirSocketId;
-    theirVideoEl.srcObject = stream;
-    theirVideoEl.width = 640;
-    theirVideoEl.height = 480;
-    theirVideoEl.muted = true;
-    theirVideoEl.onloadedmetadata = () => theirVideoEl.play();
-
-    document.body.appendChild(theirVideoEl);
-
-    // Create a canvas for facial expression detection of the remote user
-    let theirCanvas = document.createElement('canvas');
-    theirCanvas.width = 320;  
-    theirCanvas.height = 240; 
-    theirCanvas.id = `canvas_${theirSocketId}`;
-    theirCanvas.getContext('2d', { willReadFrequently: true });
-    document.body.appendChild(theirCanvas);
-
-    faceCanvas[theirSocketId] = theirCanvas;
-
-    startFaceDetection(theirVideoEl, theirCanvas.id); // Start facial expression detection for the remote user
-  });
-
-  return peerConnection; // Return the peer connection object
 }
 
 // Face Detection Function for both local and remote videos
@@ -469,8 +270,8 @@ function startFaceDetection(videoEl, canvasId) {
 
       // 检查烟花状态
       checkFireworkState();
-      // 检查并触发环绕状态
-      checkAndStartOrbit();
+      // 检查ViolinCello音效播放
+      checkViolinCelloSound();
     } else {
       // 没有检测到人脸
       isFaceDetected = false;
@@ -523,22 +324,20 @@ function startFaceDetection(videoEl, canvasId) {
   }, 100);
 }
 
-// 修改generateNewUserColor函数，使用新的颜色数组
+// 修改为单人模式的颜色生成
 function generateNewUserColor() {
-  // 随机选取一个颜色
   const color = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+  userColors['local'] = color;
   return color;
 }
 
-// 为用户生成一个新的随机坐标
+// 修改为单人模式的坐标生成
 function generateNewUserCoordinates() {
-  // l的范围是0°到360°
-  const l = Math.floor(Math.random() * 361);
-  // b的范围是-90°到+90°
-  const b = Math.floor(Math.random() * 181) - 90;
-  // 格式化坐标并存储
-  const coordinates = { l, b };
-  userCoordinates[socket.id] = coordinates;
+  const coordinates = {
+    l: Math.floor(Math.random() * 360),
+    b: Math.floor(Math.random() * 180) - 90
+  };
+  userCoordinates['local'] = coordinates;
   return coordinates;
 }
 
@@ -586,7 +385,7 @@ function checkFireworkState() {
               !sparkleElements[happyFace].classList.contains('hidden') &&
               happinessStates[happyFace] > 0.8) {
             // 显示单人微笑的诗句
-            poemElement.innerHTML = "Drifting star, your frequency will one day meet its harmonic twin.";
+            showPoemForDuration("Drifting star, your frequency will one day meet its harmonic twin.");
           }
         }
         // 清除计时器，以便下次可以再次触发
@@ -611,6 +410,7 @@ function clearLoneSmileTimeout() {
 // Start continuous fireworks
 function startContinuousFireworks(colors) {
   if (fireworkInterval) return;
+  stopViolinCello(); // 触发烟花时立刻停止ViolinCello
   // 让所有已分配颜色的sparkle（.filled）变为透明
   Object.values(sparkleElements).forEach(sparkle => {
     if (sparkle && sparkle.classList.contains('filled')) {
@@ -672,8 +472,9 @@ function stopFireworks() {
     });
     
     // 如果烟花曾经触发过，更改诗句内容
-    if (fireworkHasTriggered && poemElement) {
-      poemElement.innerHTML = "What matters is: your resonance once rippled in the depths of another soul's cosmos.";
+    const happyFaces = Object.keys(happinessStates).filter(faceId => happinessStates[faceId] > 0.8);
+    if (fireworkHasTriggered && poemElement && happyFaces.length < 2) {
+      showPoemForDuration("What matters is: your resonance once rippled in the depths of another soul's cosmos.");
     }
     
     // 恢复诗句为金色（可见）
@@ -938,8 +739,14 @@ function playViolinCello() {
     violinCelloAudio.preload = 'auto';
     document.body.appendChild(violinCelloAudio);
   }
-  violinCelloAudio.volume = 1.0;
+  violinCelloAudio.volume = 0.3;
   violinCelloAudio.play();
+
+  // 隐藏所有诗句等文字
+  document.querySelectorAll('.poem-text, .sparkle-coordinates, .silver-text').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.5s';
+  });
 }
 
 function stopViolinCello() {
@@ -947,10 +754,14 @@ function stopViolinCello() {
     violinCelloAudio.pause();
     violinCelloAudio.currentTime = 0;
   }
+  // 恢复所有诗句等文字
+  document.querySelectorAll('.poem-text, .sparkle-coordinates, .silver-text').forEach(el => {
+    el.style.opacity = '';
+    el.style.transition = '';
+  });
 }
 
 function checkAndStartOrbit() {
-  // 只处理两个可见光点
   const ids = Object.keys(sparkleElements).filter(id => {
     const s = sparkleElements[id];
     return s && !s.classList.contains('hidden');
@@ -966,11 +777,13 @@ function checkAndStartOrbit() {
   const x2 = parseFloat(s2.style.left);
   const y2 = parseFloat(s2.style.top);
   const dist = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
-  if (dist < 100) {
+
+  if (!isOrbiting && dist < ORBIT_NEAR_PERCENT) {
     startOrbit(ids, [x1, y1, x2, y2]);
-  } else {
+  } else if (isOrbiting && dist > ORBIT_FAR_PERCENT) {
     stopOrbit();
   }
+  // 其余情况保持当前状态
 }
 
 function startOrbit(ids, basePositions) {
@@ -1019,4 +832,46 @@ function stopOrbit() {
     cancelAnimationFrame(orbitAnimationId);
     orbitAnimationId = null;
   }
+}
+
+// 取消环绕动画，改为距离检测播放ViolinCello
+function checkViolinCelloSound() {
+  const ids = Object.keys(sparkleElements).filter(id => {
+    const s = sparkleElements[id];
+    return s && !s.classList.contains('hidden');
+  });
+  if (ids.length !== 2) {
+    stopViolinCello();
+    return;
+  }
+  const s1 = sparkleElements[ids[0]];
+  const s2 = sparkleElements[ids[1]];
+  const x1 = parseFloat(s1.style.left) / window.innerWidth;
+  const y1 = parseFloat(s1.style.top) / window.innerHeight;
+  const x2 = parseFloat(s2.style.left) / window.innerWidth;
+  const y2 = parseFloat(s2.style.top) / window.innerHeight;
+  const dist = Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+  if (dist < ORBIT_NEAR_PERCENT) {
+    playViolinCello();
+  } else if (dist > ORBIT_FAR_PERCENT) {
+    stopViolinCello();
+  }
+}
+
+function showPoemForDuration(text, duration = 10000) {
+  if (poemTimeout) {
+    clearTimeout(poemTimeout);
+    poemTimeout = null;
+  }
+  if (poemElement) {
+    poemElement.innerHTML = text;
+    poemElement.classList.add('visible');
+  }
+  poemTimeout = setTimeout(() => {
+    if (poemElement) {
+      poemElement.innerHTML = '';
+      poemElement.classList.remove('visible');
+    }
+    poemTimeout = null;
+  }, duration);
 }

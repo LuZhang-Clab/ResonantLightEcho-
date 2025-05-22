@@ -1,6 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Satisfy&display=swap');
+/* 移除 Google Fonts 导入 */
+/* @import url('https://fonts.googleapis.com/css2?family=Satisfy&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap'); */
+
+/* 添加本地字体声明 */
+@font-face {
+  font-family: 'Satisfy';
+  src: url('fonts/Satisfy-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Dancing Script';
+  src: url('fonts/DancingScript-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Great Vibes';
+  src: url('fonts/GreatVibes-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 body {
   min-height: 100vh;
@@ -60,19 +83,119 @@ video, canvas {
   z-index: 9999;
   background: radial-gradient(circle at 60% 40%, #fff9, var(--sparkle-main, #e0eaff) 55%, rgba(224,234,255,0.2) 80%, transparent 100%);
   box-shadow:
-    0 0 32px 8px var(--sparkle-main, #e0eaff),
-    0 0 80px 24px var(--sparkle-main, #e0eaff),
-    0 0 120px 48px var(--sparkle-main, #e0eaff),
-    0 0 200px 80px var(--sparkle-main, #e0eaff, 0.2);
+    0 0 4px 1px var(--sparkle-main, #e0eaff),
+    0 0 8px 2px var(--sparkle-main, #e0eaff),
+    0 0 12px 4px var(--sparkle-main, #e0eaff, 0.2);
   border: none;
+}
+
+/* 移除之前的光晕效果，只保留粒子 */
+.sparkle::before,
+.sparkle::after {
+  display: none;
+}
+
+/* 添加额外的粒子元素 */
+.sparkle .particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--sparkle-main, #e0eaff);
+  filter: blur(0.5px);
+  opacity: 0.8;
+  z-index: -1;
+}
+
+/* 10个粒子，每个都有不同的动画 */
+.sparkle .particle:nth-child(1) { animation: float-particle-1 4s infinite ease-in-out; }
+.sparkle .particle:nth-child(2) { animation: float-particle-2 3.5s infinite ease-in-out; }
+.sparkle .particle:nth-child(3) { animation: float-particle-3 5s infinite ease-in-out; }
+.sparkle .particle:nth-child(4) { animation: float-particle-4 4.5s infinite ease-in-out; }
+.sparkle .particle:nth-child(5) { animation: float-particle-5 3s infinite ease-in-out; }
+.sparkle .particle:nth-child(6) { animation: float-particle-6 4s infinite ease-in-out; }
+.sparkle .particle:nth-child(7) { animation: float-particle-7 3.5s infinite ease-in-out; }
+.sparkle .particle:nth-child(8) { animation: float-particle-8 5.5s infinite ease-in-out; }
+.sparkle .particle:nth-child(9) { animation: float-particle-9 4s infinite ease-in-out; }
+.sparkle .particle:nth-child(10) { animation: float-particle-10 3s infinite ease-in-out; }
+
+/* 不同的移动距离和速度 */
+@keyframes float-particle-1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-30px, -30px) scale(1.2); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(15px, -20px) scale(1.1); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-25px, 25px) scale(1.3); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-4 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(35px, 15px) scale(1.2); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-5 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-20px, 10px) scale(1.1); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-6 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(25px, -25px) scale(1.3); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-7 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-15px, -15px) scale(1.1); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-8 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(30px, 20px) scale(1.2); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-9 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-35px, -20px) scale(1.3); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+@keyframes float-particle-10 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(20px, 30px) scale(1.1); opacity: 0.4; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+}
+
+/* 当星球移动时增强拖尾效果 */
+.sparkle.moving {
+  transition: all 0.3s ease-out;
+}
+
+.sparkle.moving .particle {
+  animation-duration: 1.5s !important;
+  filter: blur(0.3px);
 }
 
 .sparkle.filled {
   background: radial-gradient(circle at 60% 40%, #fff9, var(--sparkle-main, #e0eaff) 55%, rgba(224,234,255,0.2) 80%, transparent 100%);
   box-shadow:
-    0 0 48px 16px var(--sparkle-main, #e0eaff),
-    0 0 120px 40px var(--sparkle-main, #e0eaff),
-    0 0 200px 80px var(--sparkle-main, #e0eaff, 0.2);
+    0 0 6px 1.5px var(--sparkle-main, #e0eaff),
+    0 0 12px 3px var(--sparkle-main, #e0eaff),
+    0 0 18px 6px var(--sparkle-main, #e0eaff, 0.2);
   opacity: 0.97;
 }
 
