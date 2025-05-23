@@ -79,7 +79,14 @@ async function initCapture() {
   await loadModels(); // Load Face-API.js models
 
   let videoEl = document.getElementById('myVideo'); // Get the local video element
-  let constraints = { audio: true, video: true }; // Set audio and video constraints
+  let constraints = { 
+    audio: true, 
+    video: { 
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+      facingMode: "user"
+    } 
+  }; // Set audio and video constraints
 
   // Request user permission to access the camera and microphone
   try {
@@ -91,12 +98,40 @@ async function initCapture() {
     // Ensure video is loaded and play, then adjust canvas size and start face detection
     videoEl.onloadedmetadata = () => {
       console.log('Video metadata loaded, starting playback...');
-      videoEl.play();
+      videoEl.play().catch(err => {
+        console.error('Error playing video:', err);
+        // 如果自动播放失败，添加点击事件监听器
+        document.addEventListener('click', () => {
+          videoEl.play().catch(e => console.error('Error playing video after click:', e));
+        }, { once: true });
+      });
       adjustCanvasSize(videoEl, 'myCanvas'); // Adjust Canvas to match Video
       startFaceDetection(videoEl, 'myCanvas');
     };
   } catch (err) {
     console.error("Error accessing webcam: ", err);
+    // 如果获取视频流失败，尝试使用备用约束
+    try {
+      constraints = { audio: true, video: true };
+      let stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Got local stream with fallback constraints', stream);
+      myLocalMediaStream = stream;
+      videoEl.srcObject = stream;
+      
+      videoEl.onloadedmetadata = () => {
+        console.log('Video metadata loaded with fallback, starting playback...');
+        videoEl.play().catch(err => {
+          console.error('Error playing video with fallback:', err);
+          document.addEventListener('click', () => {
+            videoEl.play().catch(e => console.error('Error playing video after click:', e));
+          }, { once: true });
+        });
+        adjustCanvasSize(videoEl, 'myCanvas');
+        startFaceDetection(videoEl, 'myCanvas');
+      };
+    } catch (fallbackErr) {
+      console.error("Error accessing webcam with fallback constraints: ", fallbackErr);
+    }
   }
 }
 

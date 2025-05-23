@@ -15,7 +15,7 @@
   
   <div>
     <section>
-      <video id="myVideo" width="640" height="480" autoplay muted></video>
+      <video id="myVideo" width="640" height="480" autoplay muted playsinline></video>
       <canvas id="myCanvas"></canvas>
     </section>
     <section>
@@ -37,5 +37,7 @@
   <!-- 使用本地库文件 -->
   <script src="libraries/face-api.min.js"></script>
   <script src="app.js"></script>
+  <!-- 最后加载着色器 -->
+  <script src="galaxy-shader.js"></script>
 </body>
 </html>
